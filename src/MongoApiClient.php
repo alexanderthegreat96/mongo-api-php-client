@@ -6,21 +6,98 @@ use GuzzleHttp\Client;
 
 class MongoApiClient
 {
+    /**
+     * the server url
+     *
+     * @var string
+     */
     private $server_url;
+    /**
+     * the server port
+     *
+     * @var string
+     */
     private $server_port;
+    /**
+     * the api url
+     *
+     * @var int
+     */
     private $api_url;
+    /**
+     * database name
+     *
+     * @var string
+     */
     private $db_name;
+    /**
+     * table / collection name
+     *
+     * @var string
+     */
     private $table_name;
+    /**
+     * results per page
+     *
+     * @var int
+     */
     private $per_page;
+    /**
+     * current page
+     *
+     * @var int
+     */
     private $page;
+    /**
+     * query params
+     *
+     * @var array
+     */
     private $query_params;
+    /**
+     * where_query
+     *
+     * @var array
+     */
     private $where_query;
+    /**
+     * or where query
+     *
+     * @var array
+     */
     private $or_where_query;
+    /**
+     * sort by
+     *
+     * @var array
+     */
     private $sort_by_list;
+    /**
+     * operator map for queries
+     *
+     * @var array
+     */
     private $operator_map;
+    /**
+     * sorting order
+     *
+     * @var array
+     */
     private $sort_order;
+    /**
+     * Guzzle HTTP Client
+     *
+     * @var \GuzzleHttp\Client
+     */
     private $guzzle;
 
+    /**
+     * Basic Constructor
+     *
+     * @param [type] $server_url
+     * @param integer $server_port
+     * @param string $scheme
+     */
     public function __construct($server_url = null, $server_port = 0, $scheme = "http")
     {
         $this->server_url = $server_url;
@@ -53,6 +130,12 @@ class MongoApiClient
         $this->guzzle = new Client();
     }
 
+    /**
+     * Builds the query
+     * before sending it to the server
+     *
+     * @return void
+     */
     private function assembleQuery()
     {
         if (count($this->where_query) > 0) {
@@ -77,8 +160,24 @@ class MongoApiClient
         }
     }
 
-    private function makeRequest(string $url, string $method, bool $queryParams = false, array $data = null, array $headers = [])
-    {
+    /**
+     * Makes HTTP requests
+     * to the server
+     *
+     * @param string $url
+     * @param string $method
+     * @param boolean $queryParams
+     * @param array|null $data
+     * @param array $headers
+     * @return void
+     */
+    private function makeRequest(
+        string $url,
+        string $method,
+        bool $queryParams = false,
+        array $data = null,
+        array $headers = []
+    ): array {
         $params = [];
 
         if ($queryParams) {
@@ -111,6 +210,12 @@ class MongoApiClient
         }
     }
 
+    /**
+     * Lists all databases
+     * on the current server
+     *
+     * @return array
+     */
     public function listDatabases(): array
     {
         $request_url = $this->api_url . "/db/databases";
@@ -119,6 +224,12 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Lists all tables inside a database
+     *
+     * @param string|null $db_name
+     * @return array
+     */
     public function listTablesInDb(string $db_name = null): array
     {
         if (!$db_name) {
@@ -133,7 +244,14 @@ class MongoApiClient
             'accept' => 'application/json'
         ]);
     }
-    public function fromDb($db_name = null)
+
+    /**
+     * sets the database name
+     *
+     * @param [type] $db_name
+     * @return MongoApiClient
+     */
+    public function fromDb($db_name = null): MongoApiClient
     {
         if ($db_name) {
             $this->db_name = $db_name;
@@ -141,7 +259,13 @@ class MongoApiClient
         return $this;
     }
 
-    public function intoDb($db_name = null)
+    /**
+     * Sets the database name
+     *
+     * @param [type] $db_name
+     * @return MongoApiClient
+     */
+    public function intoDb($db_name = null): MongoApiClient
     {
         if ($db_name) {
             $this->db_name = $db_name;
@@ -149,7 +273,13 @@ class MongoApiClient
         return $this;
     }
 
-    public function fromTable($table_name = null)
+    /**
+     * sets the table / collection
+     *
+     * @param [type] $table_name
+     * @return void
+     */
+    public function fromTable($table_name = null): MongoApiClient
     {
         if ($table_name) {
             $this->table_name = $table_name;
@@ -157,7 +287,13 @@ class MongoApiClient
         return $this;
     }
 
-    public function intoTable($table_name = null)
+    /**
+     * sets the table / collection
+     *
+     * @param [type] $table_name
+     * @return void
+     */
+    public function intoTable($table_name = null): MongoApiClient
     {
         if ($table_name) {
             $this->table_name = $table_name;
@@ -165,7 +301,15 @@ class MongoApiClient
         return $this;
     }
 
-    public function where($col_name = null, $operator = null, $col_val = null)
+    /**
+     * Where constraint
+     *
+     * @param [type] $col_name
+     * @param [type] $operator
+     * @param [type] $col_val
+     * @return void
+     */
+    public function where($col_name = null, $operator = null, $col_val = null): MongoApiClient
     {
         if (array_key_exists($operator, $this->operator_map)) {
             $this->where_query[] = $col_name . "," . $this->operator_map[$operator] . "," . strval($col_val);
@@ -173,7 +317,15 @@ class MongoApiClient
         return $this;
     }
 
-    public function orWhere($col_name = null, $operator = null, $col_val = null)
+    /**
+     * orWhere constraint
+     *
+     * @param [type] $col_name
+     * @param [type] $operator
+     * @param [type] $col_val
+     * @return void
+     */
+    public function orWhere($col_name = null, $operator = null, $col_val = null): MongoApiClient
     {
         if (array_key_exists($operator, $this->operator_map)) {
             $this->or_where_query[] = $col_name . "," . $this->operator_map[$operator] . "," . strval($col_val);
@@ -181,7 +333,14 @@ class MongoApiClient
         return $this;
     }
 
-    public function perPage($per_page = 0)
+    /**
+     * Sets how many results 
+     * per page
+     *
+     * @param integer $per_page
+     * @return void
+     */
+    public function perPage($per_page = 0): MongoApiClient
     {
         if ($per_page > 0) {
             $this->per_page = $per_page;
@@ -189,7 +348,13 @@ class MongoApiClient
         return $this;
     }
 
-    public function page($page = 0)
+    /**
+     * Sets the current page
+     *
+     * @param integer $page
+     * @return void
+     */
+    public function page($page = 0): MongoApiClient
     {
         if ($page > 0) {
             $this->page = $page;
@@ -197,7 +362,14 @@ class MongoApiClient
         return $this;
     }
 
-    public function sortBy($col_name = null, $direction = null)
+    /**
+     * Sets the orderBy
+     *
+     * @param [type] $col_name
+     * @param [type] $direction
+     * @return void
+     */
+    public function sortBy($col_name = null, $direction = null): MongoApiClient
     {
         if (in_array($direction, $this->sort_order)) {
             $this->sort_by_list[] = $col_name . ":" . $direction;
@@ -205,6 +377,12 @@ class MongoApiClient
         return $this;
     }
 
+    /**
+     * Retrieves or multiple records
+     * based on a provided query
+     *
+     * @return array
+     */
     public function select(): array
     {
         $this->assembleQuery();
@@ -215,6 +393,12 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Returns a record by mongo_id
+     *
+     * @param string|null $mongo_id
+     * @return array
+     */
     public function selectById(string $mongo_id = null): array
     {
         if (!$mongo_id) {
@@ -228,6 +412,15 @@ class MongoApiClient
         return $this->makeRequest($request_url, "GET", false, null, ["accept" => "application/json"]);
     }
 
+    /**
+     * Performs an update for one
+     * or multiple records based
+     * on certain conditions set through
+     * the provided query
+     *
+     * @param array|null $data
+     * @return array
+     */
     public function update(array $data = null): array
     {
 
@@ -246,6 +439,14 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Updates an existing record
+     * by mongo_id
+     *
+     * @param string|null $mongo_id
+     * @param array|null $data
+     * @return array
+     */
     public function updateById(string $mongo_id = null, array $data = null): array
     {
         if (!$data && !$mongo_id) {
@@ -262,6 +463,12 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Inserts a new record
+     *
+     * @param array|null $data
+     * @return array
+     */
     public function insert(array $data = null): array
     {
         if (!$data) {
@@ -278,6 +485,15 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Inserts a record if some
+     * condition is met
+     * use the query builder before 
+     * running this method
+     *
+     * @param array|null $data
+     * @return array
+     */
     public function insertIf(array $data = null): array
     {
         if (!$data) {
@@ -296,7 +512,13 @@ class MongoApiClient
         ]);
     }
 
-    public function delete()
+    /**
+     * Deletes records based on query
+     * a query should be provided
+     *
+     * @return array
+     */
+    public function delete(): array
     {
         $this->assembleQuery();
 
@@ -306,13 +528,19 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Deletes a record by ID
+     *
+     * @param string|null $mongo_id
+     * @return array
+     */
     public function deleteById(string $mongo_id = null): array
     {
         if (!$mongo_id) {
-            return array(
+            return [
                 "status" => false,
                 "error" => "You failed to provide a mongo_id to send to the server."
-            );
+            ];
         }
 
         $request_url = $this->api_url . "/db/" . $this->db_name . "/" . $this->table_name . "/delete/" . $mongo_id;
@@ -321,13 +549,19 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Deletes a database
+     *
+     * @param string|null $db_name
+     * @return array
+     */
     public function deleteDatabase(string $db_name = null): array
     {
         if (!$db_name) {
-            return array(
+            return [
                 "status" => false,
                 "error" => "You did not provide a database name"
-            );
+            ];
         }
 
         $request_url = $this->api_url . "/db/" . $db_name . "/delete";
@@ -336,13 +570,20 @@ class MongoApiClient
         ]);
     }
 
-    public function deleteTablesInDatabase($db_name = null, $table_name = null)
+    /**
+     * Deletes Tables inside a database
+     *
+     * @param [type] $db_name
+     * @param [type] $table_name
+     * @return void
+     */
+    public function deleteTablesInDatabase($db_name = null, $table_name = null): array
     {
         if (!$table_name && !$db_name) {
-            return array(
+            return [
                 "status" => false,
                 "error" => "You did not provide a valid database + table / collection name."
-            );
+            ];
         }
 
         $request_url = $this->api_url . "/db/" . $db_name . "/" . $table_name . "/delete";
