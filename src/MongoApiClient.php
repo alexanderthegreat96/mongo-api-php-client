@@ -1,6 +1,6 @@
 <?php
 
-namespace Alexanderthegreat96\MoongoApiClient;
+namespace Alexanderthegreat96\MongoApiClient;
 
 use GuzzleHttp\Client;
 
