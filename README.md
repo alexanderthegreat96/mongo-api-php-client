@@ -7,7 +7,7 @@ MongoApiClient is a PHP library for interacting with MongoDB through an API. Thi
 To install the library, use Composer:
 
 ```bash
-composer require alexanderthegreat96/moongoapiclient
+composer require alexanderthegreat96/mongo-api-client
 ```
 
 
