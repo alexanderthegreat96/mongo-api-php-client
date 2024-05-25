@@ -19,7 +19,7 @@ composer require alexanderthegreat96/mongo-api-client
 ```php
 <?php
 
-use Alexanderthegreat96\MoongoApiClient\MongoApiClient;
+use Alexanderthegreat96\MongoApiClient\MongoApiClient;
 
 require "vendor/autoload.php";
 

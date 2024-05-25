@@ -11,7 +11,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Alexanderthegreat96\\MoongoApiClient\\": "src/"
+            "Alexanderthegreat96\\MongoApiClient\\": "src/"
         }
     },
     "minimum-stability": "stable"
