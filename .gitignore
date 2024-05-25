@@ -1,0 +1,53 @@
+# Composer dependency directory
+/vendor/
+
+# Composer package lock file
+composer.lock
+
+# Environment variables file
+.env
+
+# PHPStorm project files
+.idea/
+
+# MacOS system files
+.DS_Store
+
+# Log files
+*.log
+
+# PHPUnit result cache
+.phpunit.result.cache
+
+# Symfony cache and logs
+/var/cache/
+/var/logs/
+/var/sessions/
+
+# Laravel specific
+/storage/*.key
+/storage/logs/*.log
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/bootstrap/cache/*
+
+# Ignoring test coverage reports
+/coverage/
+
+# Node dependencies (if using front-end tools)
+node_modules/
+npm-debug.log
+
+# Vagrant environment
+/.vagrant/
+
+# Other IDEs and editors
+/.vscode/
+*.swp
+*~
+
+# PHP code coverage results
+coverage/
+.cache/
+.php_cs.cache

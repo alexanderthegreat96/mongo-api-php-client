@@ -1,0 +1,18 @@
+{
+    "name": "alexanderthegreat96/moongo-api-client",
+    "description": "Provides a fluid interface with MongoDB API",
+    "type": "library",
+    "require": {
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "require-dev": {
+        "alexanderthegreat96/debugger-utility-alpha": "^1.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Alexanderthegreat96\\MoongoApiClient\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
