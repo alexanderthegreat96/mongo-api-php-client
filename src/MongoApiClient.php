@@ -134,9 +134,9 @@ class MongoApiClient
      * Builds the query
      * before sending it to the server
      *
-     * @return void
+     * @return MongoApiClient
      */
-    private function assembleQuery()
+    private function assembleQuery(): MongoApiClient
     {
         if (count($this->where_query) > 0) {
 
@@ -158,6 +158,8 @@ class MongoApiClient
         if (count($this->sort_by_list) > 0) {
             $this->query_params["sort"] = "[" . implode("|", $this->sort_by_list) . "]";
         }
+
+        return $this;
     }
 
     /**
@@ -169,7 +171,7 @@ class MongoApiClient
      * @param boolean $queryParams
      * @param array|null $data
      * @param array $headers
-     * @return void
+     * @return array
      */
     private function makeRequest(
         string $url,
@@ -277,7 +279,7 @@ class MongoApiClient
      * sets the table / collection
      *
      * @param [type] $table_name
-     * @return void
+     * @return MongoApiClient
      */
     public function fromTable($table_name = null): MongoApiClient
     {
@@ -291,7 +293,7 @@ class MongoApiClient
      * sets the table / collection
      *
      * @param [type] $table_name
-     * @return void
+     * @return MongoApiClient
      */
     public function intoTable($table_name = null): MongoApiClient
     {
@@ -307,7 +309,7 @@ class MongoApiClient
      * @param [type] $col_name
      * @param [type] $operator
      * @param [type] $col_val
-     * @return void
+     * @return MongoApiClient
      */
     public function where($col_name = null, $operator = null, $col_val = null): MongoApiClient
     {
@@ -323,7 +325,7 @@ class MongoApiClient
      * @param [type] $col_name
      * @param [type] $operator
      * @param [type] $col_val
-     * @return void
+     * @return MongoApiClient
      */
     public function orWhere($col_name = null, $operator = null, $col_val = null): MongoApiClient
     {
@@ -338,7 +340,7 @@ class MongoApiClient
      * per page
      *
      * @param integer $per_page
-     * @return void
+     * @return MongoApiClient
      */
     public function perPage($per_page = 0): MongoApiClient
     {
@@ -352,7 +354,7 @@ class MongoApiClient
      * Sets the current page
      *
      * @param integer $page
-     * @return void
+     * @return MongoApiClient
      */
     public function page($page = 0): MongoApiClient
     {
@@ -367,7 +369,7 @@ class MongoApiClient
      *
      * @param [type] $col_name
      * @param [type] $direction
-     * @return void
+     * @return MongoApiClient
      */
     public function sortBy($col_name = null, $direction = null): MongoApiClient
     {

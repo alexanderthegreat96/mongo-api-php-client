@@ -119,5 +119,3 @@ $mongo = new MongoApiClient("192.168.1.69", 9875, 'http');
 // $deleteById = $mongo->fromDb("my-test-database")->fromTable("my-test-table")->deleteById("6651fa298e80ecc6f646d853");
 
 // var_dump($deleteById);
-
-var_dump($mongo->listTablesInDb("xdf-player-data"));
