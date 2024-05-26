@@ -1,10 +1,10 @@
 <?php
 
-use Alexanderthegreat96\MoongoApiClient\MongoApiClient;
+use Alexanderthegreat96\MongoApiClient\MongoApiClient;
 
 require "vendor/autoload.php";
 
-$mongo = new MongoApiClient("192.168.1.69", 9875, 'http');
+$mongo = new MongoApiClient("localhost", 9875, 'http');
 
 // $select = $mongo
 //     ->fromDb("my-test-database")
@@ -119,3 +119,11 @@ $mongo = new MongoApiClient("192.168.1.69", 9875, 'http');
 // $deleteById = $mongo->fromDb("my-test-database")->fromTable("my-test-table")->deleteById("6651fa298e80ecc6f646d853");
 
 // var_dump($deleteById);
+
+// $count = $mongo
+//     ->fromDb("isac-division2-bot")
+//     ->fromTable("account-versioning")
+//     ->where("username", "=", "LMAO-B")
+//     ->count();
+
+// var_dump($count);

@@ -34,14 +34,41 @@ $select = $mongo
     ->sortBy("created_at", "asc")
     ->page(1)
     ->perPage(10)
-    ->select();
+    ->select(); // find()
 
 var_dump($select);
 
+// Retrieve the first result
+
+$first = $mongo
+    ->fromDb("my-test-database")
+    ->fromTable("my-test-table")
+    ->orWhere("username", "=", "popeye1212")
+    ->orWhere("age", ">", 34)
+    ->sortBy("created_at", "asc")
+    ->get()
+    ->first(); // you have to provide get() before this
+
+var_dump($first);
+
 // Select a record by ID
-$selectById = $mongo->fromDb("my-test-database")->fromTable("my-test-table")->selectById("665104538e80ecc6f646d6ce");
+$selectById = $mongo
+->fromDb("my-test-database")
+->fromTable("my-test-table")
+->selectById("665104538e80ecc6f646d6ce"); // findById("your-mongo-id")
 
 var_dump($selectById);
+
+// return result count
+// you may provide additional 
+// conditions
+
+$count = $mongo
+->fromDb("my-test-database")
+->fromTable("my-test-table")
+->count();
+
+var_dump($count);
 
 // Update records with conditions
 $updateWhere = $mongo->fromDb("my-test-database")->fromTable("my-test-table")->where("username", "=", "popeye1212")->update([

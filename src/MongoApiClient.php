@@ -92,9 +92,16 @@ class MongoApiClient
     private $guzzle;
 
     /**
+     * The last query's results
+     *
+     * @var [array | null]
+     */
+    private $query_results;
+
+    /**
      * Basic Constructor
      *
-     * @param [type] $server_url
+     * @param [string] $server_url
      * @param integer $server_port
      * @param string $scheme
      */
@@ -128,6 +135,8 @@ class MongoApiClient
         $this->sort_order = array("asc", "desc");
 
         $this->guzzle = new Client();
+
+        $this->query_results = null;
     }
 
     /**
@@ -380,6 +389,24 @@ class MongoApiClient
     }
 
     /**
+     * Gets the query results
+     * and pushes them into 
+     * $this->query_results
+     *
+     * @return MongoApiClient
+     */
+    public function get(): MongoApiClient
+    {
+        $results = $this->find();
+        if ($results['status']) {
+            if ($results['count'] > 0) {
+                $this->query_results = $results;
+            }
+        }
+
+        return $this;
+    }
+    /**
      * Retrieves or multiple records
      * based on a provided query
      *
@@ -395,6 +422,68 @@ class MongoApiClient
         ]);
     }
 
+    /**
+     * Does what select does
+     *
+     * @return array
+     */
+    public function find(): array
+    {
+        return $this->select();
+    }
+
+    /**
+     * Does what selectById does
+     *
+     * @param string|null $mongo_id
+     * @return array
+     */
+    public function findById(string $mongo_id = null): array
+    {
+        return $this->selectById($mongo_id);
+    }
+
+    /**
+     * Returns result count
+     *
+     * @return array
+     */
+    public function count(): array
+    {
+        if (is_null($this->query_results)) {
+            $results = $this->select();
+            if (!$results['status']) {
+                return ['status' => false, 'error' => $results['error']];
+            }
+            return ['status' => true, 'count' => $results['count']];
+        }
+        return [
+            'status' => true,
+            'count' => is_array($this->query_results)
+                ? (array_key_exists('count', $this->query_results)
+                    ? $this->query_results['count']
+                    : count($this->query_results))
+                : $this->query_results['count']
+        ];
+    }
+
+    /**
+     * Returns the first result from the last query
+     *
+     * @return array
+     */
+    public function first(): array
+    {
+        if (is_null($this->query_results)) {
+            return ['status' => false, 'error' => 'Query did not return any data. Are you sure you provided the .get() method before this?'];
+        }
+
+        if (isset($this->query_results['results'])) {
+            return ['status' => true, 'result' => $this->query_results['results'][0]];
+        }
+
+        return ['status' => true, 'result' => $this->query_results];
+    }
     /**
      * Returns a record by mongo_id
      *
