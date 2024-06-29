@@ -129,7 +129,10 @@ class MongoApiClient
             "<=" => "<=",
             ">" => ">",
             ">=" => ">=",
-            "like" => "_like_"
+            "like" => "ilike",
+            "not_like" => "not_like",
+            "between" => "between"
+
         );
 
         $this->sortOrder = array("asc", "desc");
@@ -323,9 +326,22 @@ class MongoApiClient
     public function where($colName = null, $operator = null, $colVal = null): MongoApiClient
     {
         if (array_key_exists($operator, $this->operatorMap)) {
-            $this->whereQuery[] = $colName . "," . $this->operatorMap[$operator] . "," . strval($colVal);
+            $this->whereQuery[] = $colName . "," . $this->operatorMap[$operator] . "," . $this->convertColValueForArrays($colVal);
         }
         return $this;
+    }
+
+    private function convertColValueForArrays($colVal = null)
+    {
+        if (is_array($colVal)) {
+            if (sizeof($colVal) == 2) {
+                $first = $colVal[0];
+                $last = $colVal[1];
+                return "[" . $first . ":" . $last .  "]";
+            }
+        }
+
+        return strval($colVal);
     }
 
     /**
@@ -339,7 +355,7 @@ class MongoApiClient
     public function orWhere($colName = null, $operator = null, $colVal = null): MongoApiClient
     {
         if (array_key_exists($operator, $this->operatorMap)) {
-            $this->orWhereQuery[] = $colName . "," . $this->operatorMap[$operator] . "," . strval($colVal);
+            $this->orWhereQuery[] = $colName . "," . $this->operatorMap[$operator] . "," . $this->convertColValueForArrays($colVal);
         }
         return $this;
     }
