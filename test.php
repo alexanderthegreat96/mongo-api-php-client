@@ -2,10 +2,9 @@
 
 use Alexanderthegreat96\MongoApiClient\MongoApiClient;
 
-require "src/MongoApiClient.php";
 require "vendor/autoload.php";
 
-$mongo = new MongoApiClient("localhost", 9777, 'http');
+$mongo = new MongoApiClient("localhost", 9875, 'http');
 
 // $select = $mongo
 //     ->fromDb("my-test-database")
@@ -128,7 +127,3 @@ $mongo = new MongoApiClient("localhost", 9777, 'http');
 //     ->count();
 
 // var_dump($count);
-
-$find = $mongo->fromDb("test")->fromTable("test")->where("age", "between", [10, 60])->select();
-
-print_r($find);

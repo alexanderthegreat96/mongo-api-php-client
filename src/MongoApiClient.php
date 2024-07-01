@@ -42,6 +42,13 @@ class MongoApiClient
      * @var int
      */
     private $perPage;
+
+    /**
+     * group records by / aggregate
+     *
+     * @var string
+     */
+    private $groupBy;
     /**
      * current page
      *
@@ -169,6 +176,10 @@ class MongoApiClient
 
         if (count($this->sortByList) > 0) {
             $this->queryParams["sort"] = "[" . implode("|", $this->sortByList) . "]";
+        }
+
+        if (!is_null($this->groupBy) || !empty($this->groupBy)) {
+            $this->queryParams["group_by"] = $this->groupBy;
         }
 
         return $this;
@@ -331,6 +342,14 @@ class MongoApiClient
         return $this;
     }
 
+    /**
+     * Converts an array input for column value
+     * to a structure like this [val1 : val2]
+     * ex: for when using "between" operator
+     *
+     * @param $colVal
+     * @return string
+     */
     private function convertColValueForArrays($colVal = null)
     {
         if (is_array($colVal)) {
@@ -401,6 +420,12 @@ class MongoApiClient
         if (in_array($direction, $this->sortOrder)) {
             $this->sortByList[] = $colName . ":" . $direction;
         }
+        return $this;
+    }
+
+    public function groupBy($colName = null): MongoApiClient
+    {
+        $this->groupBy = $colName;
         return $this;
     }
 
