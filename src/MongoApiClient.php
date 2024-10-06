@@ -7,35 +7,51 @@ use GuzzleHttp\Client;
 class MongoApiClient
 {
     /**
+     * headers applied across all requests
+     * @var array
+     */
+    private $globalHeaders;
+
+    /**
      * the server url
      *
      * @var string
      */
     private $serverUrl;
+
     /**
      * the server port
      *
      * @var string
      */
     private $serverPort;
+
+    /**
+     * @var string
+     */
+    private $apiKey;
+
     /**
      * the api url
      *
      * @var int
      */
     private $apiUrl;
+
     /**
      * database name
      *
      * @var string
      */
     private $dbName;
+
     /**
      * table / collection name
      *
      * @var string
      */
     private $tableName;
+
     /**
      * results per page
      *
@@ -49,48 +65,56 @@ class MongoApiClient
      * @var string
      */
     private $groupBy;
+
     /**
      * current page
      *
      * @var int
      */
     private $page;
+
     /**
      * query params
      *
      * @var array
      */
     private $queryParams;
+
     /**
      * where_query
      *
      * @var array
      */
     private $whereQuery;
+
     /**
      * or where query
      *
      * @var array
      */
     private $orWhereQuery;
+
     /**
      * sort by
      *
      * @var array
      */
     private $sortByList;
+
     /**
      * operator map for queries
      *
      * @var array
      */
     private $operatorMap;
+
     /**
      * sorting order
      *
      * @var array
      */
     private $sortOrder;
+
     /**
      * Guzzle HTTP Client
      *
@@ -111,11 +135,19 @@ class MongoApiClient
      * @param [string] $serverUrl
      * @param integer $serverPort
      * @param string $scheme
+     * @param string $apiKey
      */
-    public function __construct($serverUrl = null, $serverPort = 0, $scheme = "http")
+    public function __construct($serverUrl = null, $serverPort = 0, $scheme = "http", string $apiKey = null)
     {
+        $this->globalHeaders = [
+            'accept' => 'application/json',
+            'api_key' => $apiKey
+        ];
+
         $this->serverUrl = $serverUrl;
         $this->serverPort = $serverPort;
+        $this->apiKey = $apiKey;
+
         $this->apiUrl = $scheme . "://" . $serverUrl . ":" . strval($serverPort);
 
         $this->dbName = "my-db";
@@ -209,7 +241,7 @@ class MongoApiClient
             $params["query"] = $this->queryParams;
         }
 
-        $params["headers"] = $headers;
+        $params["headers"] = array_merge($headers, $this->globalHeaders);
 
         if ($data) {
             $params["form_params"] = [
@@ -244,9 +276,7 @@ class MongoApiClient
     public function listDatabases(): array
     {
         $requestUrl = $this->apiUrl . "/db/databases";
-        return $this->makeRequest($requestUrl, "GET", false, null, [
-            'accept' => 'application/json'
-        ]);
+        return $this->makeRequest($requestUrl, "GET", false, null);
     }
 
     /**
@@ -265,9 +295,7 @@ class MongoApiClient
         }
 
         $requestUrl = $this->apiUrl . "/db/" . $dbName . "/tables";
-        return $this->makeRequest($requestUrl, "GET", false, null, [
-            'accept' => 'application/json'
-        ]);
+        return $this->makeRequest($requestUrl, "GET", false, null);
     }
 
     /**
@@ -458,9 +486,7 @@ class MongoApiClient
         $this->assembleQuery();
         $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/select";
 
-        return $this->makeRequest($requestUrl, "GET", true, null, [
-            "accept: application/json"
-        ]);
+        return $this->makeRequest($requestUrl, "GET", true, null);
     }
 
     /**
@@ -541,7 +567,7 @@ class MongoApiClient
         }
 
         $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/get/" . $mongoId;
-        return $this->makeRequest($requestUrl, "GET", false, null, ["accept" => "application/json"]);
+        return $this->makeRequest($requestUrl, "GET", false, null);
     }
 
     /**
@@ -655,9 +681,7 @@ class MongoApiClient
         $this->assembleQuery();
 
         $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/delete-where";
-        return $this->makeRequest($requestUrl, "DELETE", true, null, [
-            'accept' => 'application/json'
-        ]);
+        return $this->makeRequest($requestUrl, "DELETE", true, null);
     }
 
     /**
@@ -676,9 +700,7 @@ class MongoApiClient
         }
 
         $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/delete/" . $mongoId;
-        return $this->makeRequest($requestUrl, "DELETE", false, null, [
-            'accept' => 'application/json'
-        ]);
+        return $this->makeRequest($requestUrl, "DELETE", false, null);
     }
 
     /**
@@ -697,9 +719,7 @@ class MongoApiClient
         }
 
         $requestUrl = $this->apiUrl . "/db/" . $dbName . "/delete";
-        return $this->makeRequest($requestUrl, "DELETE", false, null, [
-            'accept' => 'application/json'
-        ]);
+        return $this->makeRequest($requestUrl, "DELETE", false, null);
     }
 
     /**
@@ -719,8 +739,6 @@ class MongoApiClient
         }
 
         $requestUrl = $this->apiUrl . "/db/" . $dbName . "/" . $tableName . "/delete";
-        return $this->makeRequest($requestUrl, "DELETE", false, null, [
-            'accept' => 'application/json'
-        ]);
+        return $this->makeRequest($requestUrl, "DELETE", false, null);
     }
 }
