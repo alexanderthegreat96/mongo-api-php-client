@@ -3,742 +3,431 @@
 namespace Alexanderthegreat96\MongoApiClient;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 
 class MongoApiClient
 {
-    /**
-     * headers applied across all requests
-     * @var array
-     */
-    private $globalHeaders;
+    private array $globalHeaders;
+    private string $baseUrl;
+    private ?string $dbName    = null;
+    private ?string $tableName = null;
+    private int $perPage       = 0;
+    private int $page          = 0;
+    private ?string $groupBy   = null;
+    private bool $asPipeline   = false;
+    private array $whereQuery  = [];
+    private array $orWhereQuery = [];
+    private array $sortByList  = [];
+    private Client $guzzle;
 
-    /**
-     * the server url
-     *
-     * @var string
-     */
-    private $serverUrl;
+    private array $operatorMap = [
+        '='       => '=',
+        '!='      => '!=',
+        '<'       => '<',
+        '<='      => '<=',
+        '>'       => '>',
+        '>='      => '>=',
+        'like'    => 'ilike',
+        'not_like' => 'not_like',
+        'between' => 'between'
+    ];
+    private array $sortOrder = ['asc', 'desc'];
 
-    /**
-     * the server port
-     *
-     * @var string
-     */
-    private $serverPort;
-
-    /**
-     * @var string
-     */
-    private $apiKey;
-
-    /**
-     * the api url
-     *
-     * @var int
-     */
-    private $apiUrl;
-
-    /**
-     * database name
-     *
-     * @var string
-     */
-    private $dbName;
-
-    /**
-     * table / collection name
-     *
-     * @var string
-     */
-    private $tableName;
-
-    /**
-     * results per page
-     *
-     * @var int
-     */
-    private $perPage;
-
-    /**
-     * group records by / aggregate
-     *
-     * @var string
-     */
-    private $groupBy;
-
-    /**
-     * current page
-     *
-     * @var int
-     */
-    private $page;
-
-    /**
-     * query params
-     *
-     * @var array
-     */
-    private $queryParams;
-
-    /**
-     * where_query
-     *
-     * @var array
-     */
-    private $whereQuery;
-
-    /**
-     * or where query
-     *
-     * @var array
-     */
-    private $orWhereQuery;
-
-    /**
-     * sort by
-     *
-     * @var array
-     */
-    private $sortByList;
-
-    /**
-     * operator map for queries
-     *
-     * @var array
-     */
-    private $operatorMap;
-
-    /**
-     * sorting order
-     *
-     * @var array
-     */
-    private $sortOrder;
-
-    /**
-     * Guzzle HTTP Client
-     *
-     * @var \GuzzleHttp\Client
-     */
-    private $guzzle;
-
-    /**
-     * The last query's results
-     *
-     * @var [array | null]
-     */
-    private $queryResults;
-
-    /**
-     * Basic Constructor
-     *
-     * @param [string] $serverUrl
-     * @param integer $serverPort
-     * @param string $scheme
-     * @param string $apiKey
-     */
-    public function __construct($serverUrl = null, $serverPort = 0, $scheme = "http", string $apiKey = null)
-    {
-        $this->globalHeaders = [
-            'accept' => 'application/json',
-            'api_key' => $apiKey
-        ];
-
-        $this->serverUrl = $serverUrl;
-        $this->serverPort = $serverPort;
-        $this->apiKey = $apiKey;
-
-        $this->apiUrl = $scheme . "://" . $serverUrl . ":" . strval($serverPort);
-
-        $this->dbName = "my-db";
-        $this->tableName = "my-collection";
-        $this->perPage = 0;
-        $this->page = 0;
-
-        $this->queryParams = array();
-
-        $this->whereQuery = array();
-        $this->orWhereQuery = array();
-        $this->sortByList = array();
-
-        $this->operatorMap = array(
-            "=" => "=",
-            "!=" => "!=",
-            "<" => "<",
-            "<=" => "<=",
-            ">" => ">",
-            ">=" => ">=",
-            "like" => "ilike",
-            "not_like" => "not_like",
-            "between" => "between"
-
-        );
-
-        $this->sortOrder = array("asc", "desc");
-
-        $this->guzzle = new Client();
-
-        $this->queryResults = null;
+    public function __construct(
+        string $serverUrl,
+        int    $serverPort,
+        string $scheme = 'http',
+        string $apiKey = ''
+    ) {
+        $this->baseUrl       = "$scheme://$serverUrl:$serverPort/db";
+        $this->globalHeaders = ['Accept' => 'application/json', 'api_key' => $apiKey];
+        $this->guzzle        = new Client(['timeout' => 5.0]);
     }
 
-    /**
-     * Builds the query
-     * before sending it to the server
-     *
-     * @return MongoApiClient
-     */
-    private function assembleQuery(): MongoApiClient
-    {
-        if (count($this->whereQuery) > 0) {
-
-            $this->queryParams["query_and"] = "[" . implode("|", $this->whereQuery) . "]";
-        }
-
-        if (count($this->orWhereQuery) > 0) {
-            $this->queryParams["query_or"] = "[" . implode("|", $this->orWhereQuery) . "]";
-        }
-
-        if ($this->perPage > 0) {
-            $this->queryParams["per_page"] = $this->perPage;
-        }
-
-        if ($this->page > 0) {
-            $this->queryParams["page"] = $this->page;
-        }
-
-        if (count($this->sortByList) > 0) {
-            $this->queryParams["sort"] = "[" . implode("|", $this->sortByList) . "]";
-        }
-
-        if (!is_null($this->groupBy) || !empty($this->groupBy)) {
-            $this->queryParams["group_by"] = $this->groupBy;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Makes HTTP requests
-     * to the server
-     *
-     * @param string $url
-     * @param string $method
-     * @param boolean $queryParams
-     * @param array|null $data
-     * @param array $headers
-     * @return array
-     */
-    private function makeRequest(
-        string $url,
+    private function sendRequestWithRetry(
         string $method,
-        bool $queryParams = false,
-        array $data = null,
-        array $headers = []
+        string $url,
+        array  $params = [],
+        array  $data   = [],
+        array  $headers = [],
+        int    $retries = 3,
+        float  $backoff = 0.5,
+        float  $factor  = 2.0
     ): array {
-        $params = [];
-
-        if ($queryParams) {
-            $params["query"] = $this->queryParams;
-        }
-
-        $params["headers"] = array_merge($headers, $this->globalHeaders);
-
-        if ($data) {
-            $params["form_params"] = [
-                "payload" => json_encode($data)
-            ];
-        }
-
-        try {
-            $response = $this->guzzle->request($method, $url, $params);
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (\GuzzleHttp\Exception\ServerException $e) {
-            return [
-                'status' => false,
-                'error' => "Internal Server Error (500): " . $e->getMessage()
-            ];
-        } catch (\GuzzleHttp\Exception\ConnectException $e) {
-            return [
-                'status' => false,
-                'error' => "Error: Server not responding, due to: " . $e->getMessage()
-            ];
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
-            return json_decode($e->getResponse()->getBody()->getContents(), true);
-        }
-    }
-
-    /**
-     * Lists all databases
-     * on the current server
-     *
-     * @return array
-     */
-    public function listDatabases(): array
-    {
-        $requestUrl = $this->apiUrl . "/db/databases";
-        return $this->makeRequest($requestUrl, "GET", false, null);
-    }
-
-    /**
-     * Lists all tables inside a database
-     *
-     * @param string|null $dbName
-     * @return array
-     */
-    public function listTablesInDb(string $dbName = null): array
-    {
-        if (!$dbName) {
-            return array(
-                "status" => false,
-                "error" => "You did not provide a database name"
-            );
-        }
-
-        $requestUrl = $this->apiUrl . "/db/" . $dbName . "/tables";
-        return $this->makeRequest($requestUrl, "GET", false, null);
-    }
-
-    /**
-     * sets the database name
-     *
-     * @param [type] $dbName
-     * @return MongoApiClient
-     */
-    public function fromDb($dbName = null): MongoApiClient
-    {
-        if ($dbName) {
-            $this->dbName = $dbName;
-        }
-        return $this;
-    }
-
-    /**
-     * Sets the database name
-     *
-     * @param [type] $dbName
-     * @return MongoApiClient
-     */
-    public function intoDb($dbName = null): MongoApiClient
-    {
-        if ($dbName) {
-            $this->dbName = $dbName;
-        }
-        return $this;
-    }
-
-    /**
-     * sets the table / collection
-     *
-     * @param [type] $tableName
-     * @return MongoApiClient
-     */
-    public function fromTable($tableName = null): MongoApiClient
-    {
-        if ($tableName) {
-            $this->tableName = $tableName;
-        }
-        return $this;
-    }
-
-    /**
-     * sets the table / collection
-     *
-     * @param [type] $tableName
-     * @return MongoApiClient
-     */
-    public function intoTable($tableName = null): MongoApiClient
-    {
-        if ($tableName) {
-            $this->tableName = $tableName;
-        }
-        return $this;
-    }
-
-    /**
-     * Where constraint
-     *
-     * @param [type] $colName
-     * @param [type] $operator
-     * @param [type] $colVal
-     * @return MongoApiClient
-     */
-    public function where($colName = null, $operator = null, $colVal = null): MongoApiClient
-    {
-        if (array_key_exists($operator, $this->operatorMap)) {
-            $this->whereQuery[] = $colName . "," . $this->operatorMap[$operator] . "," . $this->convertColValueForArrays($colVal);
-        }
-        return $this;
-    }
-
-    /**
-     * Converts an array input for column value
-     * to a structure like this [val1 : val2]
-     * ex: for when using "between" operator
-     *
-     * @param $colVal
-     * @return string
-     */
-    private function convertColValueForArrays($colVal = null)
-    {
-        if (is_array($colVal)) {
-            if (sizeof($colVal) == 2) {
-                $first = $colVal[0];
-                $last = $colVal[1];
-                return "[" . $first . ":" . $last .  "]";
+        $attempt = 0;
+        $delay   = $backoff;
+        do {
+            try {
+                $options = ['headers' => array_merge($this->globalHeaders, $headers)];
+                if ($params) {
+                    $options['query']      = $params;
+                }
+                if ($data) {
+                    $options['form_params'] = ['payload' => json_encode($data)];
+                }
+                $resp = $this->guzzle->request($method, $url, $options);
+                return json_decode($resp->getBody()->getContents(), true);
+            } catch (RequestException $e) {
+                $attempt++;
+                if ($attempt >= $retries) {
+                    throw $e;
+                }
+                usleep((int)($delay * 1e6));
+                $delay *= $factor;
             }
+        } while ($attempt < $retries);
+
+        return ['status' => false, 'code' => 500, 'error' => "{$method} $url failed after $retries attempts"];
+    }
+
+    private function buildPath(string $path = ''): string
+    {
+        $parts = array_filter([
+            rtrim($this->baseUrl, '/'),
+            $this->dbName,
+            $this->tableName,
+            ltrim($path, '/')
+        ]);
+        return implode('/', $parts);
+    }
+
+    private function assembleParams(): array
+    {
+        $p = [];
+        if ($this->whereQuery) {
+            $p['query_and']  = '[' . implode('|', $this->whereQuery) . ']';
         }
-
-        return strval($colVal);
-    }
-
-    /**
-     * orWhere constraint
-     *
-     * @param [type] $colName
-     * @param [type] $operator
-     * @param [type] $colVal
-     * @return MongoApiClient
-     */
-    public function orWhere($colName = null, $operator = null, $colVal = null): MongoApiClient
-    {
-        if (array_key_exists($operator, $this->operatorMap)) {
-            $this->orWhereQuery[] = $colName . "," . $this->operatorMap[$operator] . "," . $this->convertColValueForArrays($colVal);
+        if ($this->orWhereQuery) {
+            $p['query_or']   = '[' . implode('|', $this->orWhereQuery) . ']';
         }
-        return $this;
-    }
-
-    /**
-     * Sets how many results 
-     * per page
-     *
-     * @param integer $perPage
-     * @return MongoApiClient
-     */
-    public function perPage($perPage = 0): MongoApiClient
-    {
-        if ($perPage > 0) {
-            $this->perPage = $perPage;
+        if ($this->sortByList) {
+            $p['sort']       = '[' . implode('|', $this->sortByList) . ']';
         }
-        return $this;
-    }
-
-    /**
-     * Sets the current page
-     *
-     * @param integer $page
-     * @return MongoApiClient
-     */
-    public function page($page = 0): MongoApiClient
-    {
-        if ($page > 0) {
-            $this->page = $page;
+        if ($this->groupBy) {
+            $p['group_by']   = $this->groupBy;
         }
-        return $this;
-    }
-
-    /**
-     * Sets the orderBy
-     *
-     * @param [type] $colName
-     * @param [type] $direction
-     * @return MongoApiClient
-     */
-    public function sortBy($colName = null, $direction = null): MongoApiClient
-    {
-        if (in_array($direction, $this->sortOrder)) {
-            $this->sortByList[] = $colName . ":" . $direction;
+        if ($this->page > 0) {
+            $p['page']       = $this->page;
         }
-        return $this;
-    }
-
-    public function groupBy($colName = null): MongoApiClient
-    {
-        $this->groupBy = $colName;
-        return $this;
-    }
-
-    /**
-     * Gets the query results
-     * and pushes them into 
-     * $this->queryResults
-     *
-     * @return MongoApiClient
-     */
-    public function get(): MongoApiClient
-    {
-        $results = $this->find();
-        if ($results['status']) {
-            if ($results['count'] > 0) {
-                $this->queryResults = $results;
-            }
+        if ($this->perPage > 0) {
+            $p['per_page']   = $this->perPage;
         }
-
-        return $this;
-    }
-    /**
-     * Retrieves or multiple records
-     * based on a provided query
-     *
-     * @return array
-     */
-    public function select(): array
-    {
-        $this->assembleQuery();
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/select";
-
-        return $this->makeRequest($requestUrl, "GET", true, null);
-    }
-
-    /**
-     * Does what select does
-     *
-     * @return array
-     */
-    public function find(): array
-    {
-        return $this->select();
-    }
-
-    /**
-     * Does what selectById does
-     *
-     * @param string|null $mongoId
-     * @return array
-     */
-    public function findById(string $mongoId = null): array
-    {
-        return $this->selectById($mongoId);
-    }
-
-    /**
-     * Returns result count
-     *
-     * @return array
-     */
-    public function count(): array
-    {
-        if (is_null($this->queryResults)) {
-            $results = $this->select();
-            if (!$results['status']) {
-                return ['status' => false, 'error' => $results['error']];
-            }
-            return ['status' => true, 'count' => $results['count']];
+        if ($this->asPipeline) {
+            $p['as_pipeline'] = true;
         }
-        return [
-            'status' => true,
-            'count' => is_array($this->queryResults)
-                ? (array_key_exists('count', $this->queryResults)
-                    ? $this->queryResults['count']
-                    : count($this->queryResults))
-                : $this->queryResults['count']
+        return $p;
+    }
+
+    private function resetQuery(): void
+    {
+        $this->whereQuery   = [];
+        $this->orWhereQuery = [];
+        $this->sortByList   = [];
+        $this->groupBy      = null;
+        $this->page         = 0;
+        $this->perPage      = 0;
+        $this->asPipeline   = false;
+    }
+
+    private function wrapResponse(array $raw, bool $single = false, bool $utils = false): MongoApiResponse
+    {
+        if (!($raw['status'] ?? false)) {
+            return new MongoApiResponse(['status' => false, 'code' => $raw['code'] ?? 500, 'error' => $raw['error'] ?? 'Unknown error']);
+        }
+        if ($utils) {
+            return new MongoApiResponse($raw);
+        }
+        $results = $raw['results'] ?? [];
+        $payload = [
+            'status'     => true,
+            'code'       => $raw['code']       ?? 200,
+            'database'   => $raw['database']   ?? null,
+            'table'      => $raw['table']      ?? null,
+            'count'      => $raw['count']      ?? 0,
+            'pagination' => $raw['pagination'] ?? [],
+            'query'      => $raw['query']      ?? [],
+            'data'       => $single ? ($results[0] ?? null) : $results
         ];
+        return new MongoApiResponse($payload);
     }
 
-    /**
-     * Returns the first result from the last query
-     *
-     * @return array
-     */
-    public function first(): array
+    // — Fluent interface —
+    public function fromDb(string $db): self
     {
-        if (is_null($this->queryResults)) {
-            return ['status' => false, 'error' => 'Query did not return any data. Are you sure you provided the .get() method before this?'];
-        }
-
-        if (isset($this->queryResults['results'])) {
-            return ['status' => true, 'result' => $this->queryResults['results'][0]];
-        }
-
-        return ['status' => true, 'result' => $this->queryResults];
+        $this->dbName = $db;
+        return $this;
     }
-    /**
-     * Returns a record by mongoId
-     *
-     * @param string|null $mongoId
-     * @return array
-     */
-    public function selectById(string $mongoId = null): array
+    public function intoDb(string $db): self
     {
-        if (!$mongoId) {
-            return array(
-                "status" => false,
-                "error" => "You failed to provide a Mongo record ID."
-            );
-        }
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/get/" . $mongoId;
-        return $this->makeRequest($requestUrl, "GET", false, null);
+        return $this->fromDb($db);
+    }
+    public function fromTable(string $t): self
+    {
+        $this->tableName = $t;
+        return $this;
+    }
+    public function intoTable(string $t): self
+    {
+        return $this->fromTable($t);
+    }
+    public function useDb(string $db): self
+    {
+        return $this->fromDb($db);
+    }
+    public function useTable(string $t): self
+    {
+        return $this->fromTable($t);
+    }
+    public function useCollection(string $c): self
+    {
+        return $this->fromTable($c);
     }
 
-    /**
-     * Performs an update for one
-     * or multiple records based
-     * on certain conditions set through
-     * the provided query
-     *
-     * @param array|null $data
-     * @return array
-     */
-    public function update(array $data = null): array
+    public function where(string $col, string $op, $val): self
     {
-
-        if (!$data) {
-            return array(
-                "status" => false,
-                "error" => "You failed to provide some data to send to the server"
-            );
+        if (isset($this->operatorMap[$op])) {
+            $this->whereQuery[] = "$col,{$this->operatorMap[$op]},{$this->convertVal($val)}";
         }
-        $this->assembleQuery();
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/update-where";
-
-        return $this->makeRequest($requestUrl, "PUT", true, $data, [
-            "Content-Type" => "application/x-www-form-urlencoded"
-        ]);
+        return $this;
+    }
+    public function orWhere(string $col, string $op, $val): self
+    {
+        if (isset($this->operatorMap[$op])) {
+            $this->orWhereQuery[] = "$col,{$this->operatorMap[$op]},{$this->convertVal($val)}";
+        }
+        return $this;
+    }
+    private function convertVal($val): string
+    {
+        if (is_array($val) && count($val) === 2) {
+            return "[{$val[0]}:{$val[1]}]";
+        }
+        return (string)$val;
+    }
+    public function sortBy(string $col, string $dir): self
+    {
+        if (in_array($dir, $this->sortOrder)) {
+            $this->sortByList[] = "$col:$dir";
+        }
+        return $this;
+    }
+    public function groupBy(string $col): self
+    {
+        $this->groupBy = $col;
+        return $this;
+    }
+    public function page(int $p): self
+    {
+        if ($p > 0) $this->page = $p;
+        return $this;
+    }
+    public function perPage(int $n): self
+    {
+        if ($n > 0) $this->perPage = $n;
+        return $this;
+    }
+    public function limit(int $n): self
+    {
+        return $this->perPage($n);
     }
 
-    /**
-     * Updates an existing record
-     * by mongoId
-     *
-     * @param string|null $mongoId
-     * @param array|null $data
-     * @return array
-     */
-    public function updateById(string $mongoId = null, array $data = null): array
+    // — CRUD methods —
+    public function find(bool $pipeline = false): MongoApiResponse
     {
-        if (!$data && !$mongoId) {
-            return array(
-                "status" => false,
-                "error" => "You failed to provide some data + the mongoId to send to the server"
-            );
+        $this->asPipeline = $pipeline;
+        $params = $this->assembleParams();
+        $url    = $this->buildPath('select');
+        try {
+            $raw = $this->sendRequestWithRetry('GET', $url, $params, [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
         }
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/update/" . $mongoId;
-
-        return $this->makeRequest($requestUrl, "PUT", false, $data, [
-            "Content-Type" => "application/x-www-form-urlencoded"
-        ]);
+        $resp = $this->wrapResponse($raw, false, false);
+        $this->resetQuery();
+        return $resp;
     }
 
-    /**
-     * Inserts a new record
-     *
-     * @param array|null $data
-     * @return array
-     */
-    public function insert(array $data = null): array
+    public function first(): MongoApiResponse
     {
-        if (!$data) {
-            return array(
-                "status" => false,
-                "error" => "You failed to provide some data to send to the server"
-            );
+        $this->page = 1;
+        $this->perPage = 1;
+        $params = $this->assembleParams();
+        $url    = $this->buildPath('select');
+        try {
+            $raw = $this->sendRequestWithRetry('GET', $url, $params, [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
         }
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/insert";
-
-        return $this->makeRequest($requestUrl, "POST", false, $data, [
-            "Content-Type" => "application/x-www-form-urlencoded"
-        ]);
+        $resp = $this->wrapResponse($raw, true, false);
+        $this->resetQuery();
+        return $resp;
     }
 
-    /**
-     * Inserts a record if some
-     * condition is met
-     * use the query builder before 
-     * running this method
-     *
-     * @param array|null $data
-     * @return array
-     */
-    public function insertIf(array $data = null): array
+    public function findById(string $id): MongoApiResponse
     {
-        if (!$data) {
-            return array(
-                "status" => false,
-                "error" => "You failed to provide some data to send to the server"
-            );
+        $url = $this->buildPath("get/$id");
+        try {
+            $raw = $this->sendRequestWithRetry('GET', $url, [], [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
         }
-
-        $this->assembleQuery();
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/insert-if";
-
-        return $this->makeRequest($requestUrl, "POST", true, $data, [
-            "Content-Type" => "application/x-www-form-urlencoded"
-        ]);
+        return $this->wrapResponse($raw, true, false);
     }
 
-    /**
-     * Deletes records based on query
-     * a query should be provided
-     *
-     * @return array
-     */
-    public function delete(): array
+    public function insert($payload): MongoApiResponse
     {
-        $this->assembleQuery();
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/delete-where";
-        return $this->makeRequest($requestUrl, "DELETE", true, null);
+        $url = $this->buildPath('insert');
+        try {
+            $raw = $this->sendRequestWithRetry('POST', $url, [], (array)$payload, ['Content-Type' => 'application/x-www-form-urlencoded']);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, false);
     }
 
-    /**
-     * Deletes a record by ID
-     *
-     * @param string|null $mongoId
-     * @return array
-     */
-    public function deleteById(string $mongoId = null): array
+    public function insertIf($payload): MongoApiResponse
     {
-        if (!$mongoId) {
-            return [
-                "status" => false,
-                "error" => "You failed to provide a mongoId to send to the server."
-            ];
+        $params = $this->assembleParams();
+        $url    = $this->buildPath('insert-if');
+        try {
+            $raw = $this->sendRequestWithRetry('POST', $url, $params, (array)$payload, ['Content-Type' => 'application/x-www-form-urlencoded']);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
         }
-
-        $requestUrl = $this->apiUrl . "/db/" . $this->dbName . "/" . $this->tableName . "/delete/" . $mongoId;
-        return $this->makeRequest($requestUrl, "DELETE", false, null);
+        return $this->wrapResponse($raw, false, false);
     }
 
-    /**
-     * Deletes a database
-     *
-     * @param string|null $dbName
-     * @return array
-     */
-    public function deleteDatabase(string $dbName = null): array
+    public function update($payload): MongoApiResponse
     {
-        if (!$dbName) {
-            return [
-                "status" => false,
-                "error" => "You did not provide a database name"
-            ];
+        $params = $this->assembleParams();
+        $url    = $this->buildPath('update-where');
+        try {
+            $raw = $this->sendRequestWithRetry('PUT', $url, $params, (array)$payload, ['Content-Type' => 'application/x-www-form-urlencoded']);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
         }
-
-        $requestUrl = $this->apiUrl . "/db/" . $dbName . "/delete";
-        return $this->makeRequest($requestUrl, "DELETE", false, null);
+        return $this->wrapResponse($raw, false, false);
     }
 
-    /**
-     * Deletes Tables inside a database
-     *
-     * @param [type] $dbName
-     * @param [type] $tableName
-     * @return void
-     */
-    public function deleteTablesInDatabase($dbName = null, $tableName = null): array
+    public function updateById(string $id, $payload): MongoApiResponse
     {
-        if (!$tableName && !$dbName) {
-            return [
-                "status" => false,
-                "error" => "You did not provide a valid database + table / collection name."
-            ];
+        $url = $this->buildPath("update/$id");
+        try {
+            $raw = $this->sendRequestWithRetry('PUT', $url, [], (array)$payload, ['Content-Type' => 'application/x-www-form-urlencoded']);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
         }
+        return $this->wrapResponse($raw, false, false);
+    }
 
-        $requestUrl = $this->apiUrl . "/db/" . $dbName . "/" . $tableName . "/delete";
-        return $this->makeRequest($requestUrl, "DELETE", false, null);
+    public function delete(): MongoApiResponse
+    {
+        $params = $this->assembleParams();
+        $url    = $this->buildPath('delete-where');
+        try {
+            $raw = $this->sendRequestWithRetry('DELETE', $url, $params, [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, false);
+    }
+
+    public function deleteById(string $id): MongoApiResponse
+    {
+        $url = $this->buildPath("delete/$id");
+        try {
+            $raw = $this->sendRequestWithRetry('DELETE', $url, [], [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, false);
+    }
+
+    public function executeCustomQuery($query, bool $aggregate = false): MongoApiResponse
+    {
+        $this->asPipeline = $aggregate;
+        $params = $this->assembleParams();
+        $url    = $this->buildPath('custom-query');
+        try {
+            $raw = $this->sendRequestWithRetry('POST', $url, $params, $query, ['Content-Type' => 'application/x-www-form-urlencoded']);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, false);
+    }
+
+    // — Utility endpoints —
+    public function listDatabases(): MongoApiResponse
+    {
+        $url = rtrim($this->baseUrl, '/') . '/databases';
+        try {
+            $raw = $this->sendRequestWithRetry('GET', $url, [], [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, true);
+    }
+
+    public function listTablesInDb(string $db): MongoApiResponse
+    {
+        $url = "$this->baseUrl/$db/tables";
+        try {
+            $raw = $this->sendRequestWithRetry('GET', $url, [], [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, true);
+    }
+
+    public function deleteDatabase(string $db): MongoApiResponse
+    {
+        $url = "$this->baseUrl/$db/delete";
+        try {
+            $raw = $this->sendRequestWithRetry('DELETE', $url, [], [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, true);
+    }
+
+    public function deleteTable(string $db, string $tbl): MongoApiResponse
+    {
+        $url = "$this->baseUrl/$db/$tbl/delete";
+        try {
+            $raw = $this->sendRequestWithRetry('DELETE', $url, [], [], []);
+        } catch (RequestException $e) {
+            $raw = ['status' => false, 'code' => 500, 'error' => $e->getMessage()];
+        }
+        return $this->wrapResponse($raw, false, true);
+    }
+
+    // — Aliases —
+    public function select(bool $pipeline = false): MongoApiResponse
+    {
+        return $this->find($pipeline);
+    }
+    public function all(): MongoApiResponse
+    {
+        return $this->find(false);
+    }
+    public function get(): MongoApiResponse
+    {
+        return $this->find(false);
+    }
+    public function firstOrNone(): MongoApiResponse
+    {
+        return $this->first();
+    }
+    public function one(): MongoApiResponse
+    {
+        return $this->first();
+    }
+    public function dropDatabase(string $db): MongoApiResponse
+    {
+        return $this->deleteDatabase($db);
+    }
+    public function dropCollection(string $db, string $tbl): MongoApiResponse
+    {
+        return $this->deleteTable($db, $tbl);
     }
 }
