@@ -6,19 +6,19 @@ namespace Alexanderthegreat96\MongoApiClient;
 
 class MongoApiResponse
 {
-    private bool $status;
-    private int $code;
+    private bool    $status;
+    private int     $code;
     private ?string $database;
     private ?string $table;
-    private int $count;
-    private array $pagination;
-    private array $query;
-    private $data;
+    private int     $count;
+    private array   $pagination;
+    private array   $query;
+    private         $data;
     private ?string $error;
-    private array $databases;
-    private array $tables;
+    private array   $databases;
+    private array   $tables;
     private ?string $message;
-    private array $_raw;
+    private array   $_raw;
 
     public function __construct(array $payload)
     {
@@ -37,58 +37,19 @@ class MongoApiResponse
         $this->message    = $payload['message']    ?? null;
     }
 
-    public function getStatus(): bool
-    {
-        return $this->status;
-    }
-    public function getCode(): int
-    {
-        return $this->code;
-    }
-    public function getDatabase(): ?string
-    {
-        return $this->database;
-    }
-    public function getTable(): ?string
-    {
-        return $this->table;
-    }
-    public function getCount(): int
-    {
-        return $this->count;
-    }
-    public function getPagination(): array
-    {
-        return $this->pagination;
-    }
-    public function getQuery(): array
-    {
-        return $this->query;
-    }
-    public function getData()
-    {
-        return $this->data;
-    }
-    public function getError(): ?string
-    {
-        return $this->error;
-    }
-    public function getDatabases(): array
-    {
-        return $this->databases;
-    }
-    public function getTables(): array
-    {
-        return $this->tables;
-    }
-    public function getMessage(): ?string
-    {
-        return $this->message;
-    }
-    public function getRaw(): array
-    {
-        return $this->_raw;
-    }
+    public function getStatus(): bool         { return $this->status; }
+    public function getCode(): int            { return $this->code; }
+    public function getDatabase(): ?string    { return $this->database; }
+    public function getTable(): ?string       { return $this->table; }
+    public function getCount(): int           { return $this->count; }
+    public function getPagination(): array    { return $this->pagination; }
+    public function getQuery(): array         { return $this->query; }
+    public function getData()                 { return $this->data; }
+    public function getError(): ?string       { return $this->error; }
+    public function getDatabases(): array     { return $this->databases; }
+    public function getTables(): array        { return $this->tables; }
+    public function getMessage(): ?string     { return $this->message; }
+    public function getRaw(): array           { return $this->_raw; }
 
     public function __toString(): string
     {

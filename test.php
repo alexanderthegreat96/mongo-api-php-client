@@ -4,19 +4,16 @@ use Alexanderthegreat96\MongoApiClient\MongoApiClient;
 
 require "vendor/autoload.php";
 
-$mongo = new MongoApiClient("localhost", 9777, 'http', "23jnhuibnuy23u4uyi21/'dasl123");
+$mongo = new MongoApiClient("localhost", 9777, "asdasdasd", 'http');
 
 
 $results = $mongo
     ->useDb("isac-division2-api")
     ->useCollection("stats_versioning")
-    ->where("identifier", "=", "055990e9-ce4f-433d-812d-335c8bb9df96")
-    ->sortBy("created_at", "desc")
+    ->where("stats.headshots", ">", 10000)
+    ->sortBy("created_at", MongoApiClient::DESC)
     ->first();
-echo $results->getCode();
-echo $results->getError();
-echo $results->getStatus();
-var_dump($results->getData());
+
 
 // $select = $mongo
 //     ->fromDb("my-test-database")
