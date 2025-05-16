@@ -44,7 +44,7 @@ class MongoApiResponse
     public function getCount(): int           { return $this->count; }
     public function getPagination(): array    { return $this->pagination; }
     public function getQuery(): array         { return $this->query; }
-    public function getData()                 { return $this->data; }
+    public function getData()                 { return new MongoApiResponseData($this->data); }
     public function getError(): ?string       { return $this->error; }
     public function getDatabases(): array     { return $this->databases; }
     public function getTables(): array        { return $this->tables; }

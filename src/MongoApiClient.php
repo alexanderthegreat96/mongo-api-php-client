@@ -18,8 +18,10 @@ class MongoApiClient
     private array       $orWhereQuery   = [];
     private array       $sortByList     = [];
     private ?string     $groupBy        = null;
-    private int         $page           = 0;
-    private int         $perPage        = 0;
+    private int         $page           = 1;
+    private int         $perPage        = 10;
+    private int         $innerPage      = 1;
+    private int         $innerPerPage   = 30;
     private bool        $asPipeline     = false;
     private bool        $autoConvert    = true;
     private float       $timeout        = 5.0;
@@ -142,6 +144,14 @@ class MongoApiClient
         if ($this->perPage > 0) {
             $p['per_page'] = $this->perPage;
         }
+
+        if ($this->innerPage > 0) {
+            $p['inner_page'] = $this->innerPage;
+        }
+        if ($this->innerPerPage > 0) {
+            $p['inner_per_page'] = $this->innerPerPage;
+        }
+
         if ($this->asPipeline) {
             $p['as_pipeline'] = true;
         }
@@ -255,7 +265,10 @@ class MongoApiClient
     public function groupBy(string $col): self { $this->groupBy = $col; return $this; }
     public function page(int $p): self         { if ($p>0) $this->page = $p; return $this; }
     public function perPage(int $n): self      { if ($n>0) $this->perPage = $n; return $this; }
+    public function innerPage(int $p): self    { if ($p>0) $this->innerPage = $p; return $this; }
+    public function innerPerPage(int $n): self { if ($n>0) $this->innerPerPage = $n; return $this; }
     public function limit(int $n): self        { return $this->perPage($n); }
+    public function innerLimit(int $n): self   { if ($n>0) $this->innerLimit = $n; return $this; }
 
     // — CRUD —
 
