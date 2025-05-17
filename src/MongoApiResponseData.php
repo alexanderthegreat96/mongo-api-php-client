@@ -10,47 +10,50 @@ use Countable;
 
 class MongoApiResponseData implements IteratorAggregate, Countable
 {
-    /** @var array|array[] */
-    private $_payload;
+    /** @var array<string, mixed>|array<int, array<string, mixed>> */
+    private array $payload;
 
     /**
-     * @param array|array[] $payload
+     * @param array<string, mixed>|array<int, array<string, mixed>> $payload
      */
-    public function __construct(?array $payload)
+    public function __construct(array $payload)
     {
-        $this->_payload = $payload;
+        $this->payload = $payload;
     }
 
     public function getIterator(): ArrayIterator
     {
-        if (is_array($this->_payload) && $this->isList($this->_payload)) {
+        // if list of docs, wrap each item; else yield $this
+        if (array_is_list($this->payload)) {
             return new ArrayIterator(array_map(
                 fn(array $item) => new self($item),
-                $this->_payload
+                $this->payload
             ));
         }
-        return new ArrayIterator([ $this ]);
+
+        return new ArrayIterator([$this]);
     }
 
     public function count(): int
     {
-        if (is_array($this->_payload) && $this->isList($this->_payload)) {
-            return count($this->_payload);
-        }
-        return 1;
+        return array_is_list($this->payload)
+            ? count($this->payload)
+            : 1;
     }
 
-    private function isList(array $a): bool
+    private function isGroupedDoc(array $doc): bool
     {
-        // numeric keys only → list
-        return array_keys($a) === range(0, count($a) - 1);
+        return isset($doc['inner_pagination'], $doc['records'], $doc['total_records']);
     }
 
     public function hasGrouped(): bool
     {
-        $docs = $this->isList($this->_payload) ? $this->_payload : [ $this->_payload ];
-        foreach ($docs as $doc) {
-            if (isset($doc['inner_pagination'], $doc['records'], $doc['total_records'])) {
+        if (! array_is_list($this->payload)) {
+            return $this->isGroupedDoc($this->payload);
+        }
+
+        foreach ($this->payload as $doc) {
+            if (is_array($doc) && $this->isGroupedDoc($doc)) {
                 return true;
             }
         }
@@ -66,23 +69,23 @@ class MongoApiResponseData implements IteratorAggregate, Countable
             return null;
         }
 
-        if (! $this->isList($this->_payload)) {
-            return new MongoApiResponsePagination($this->_payload['inner_pagination'] ?? []);
+        if (! array_is_list($this->payload)) {
+            $inner = $this->payload['inner_pagination'] ?? null;
+            return $inner !== null
+                ? new MongoApiResponsePagination($inner)
+                : null;
         }
 
-        $wrapped = [];
-        foreach ($this->_payload as $doc) {
-            if (isset($doc['inner_pagination'])) {
-                $wrapped[] = new MongoApiResponsePagination($doc['inner_pagination']);
-            } else {
-                $wrapped[] = null;
-            }
-        }
-        return $wrapped;
+        return array_map(
+            fn($doc) => isset($doc['inner_pagination'])
+                ? new MongoApiResponsePagination($doc['inner_pagination'])
+                : null,
+            $this->payload
+        );
     }
 
     /**
-     * @return array|array[]|null
+     * @return array<string, mixed>|array<int, array<string, mixed>>|null
      */
     public function getRecords(): ?array
     {
@@ -90,40 +93,44 @@ class MongoApiResponseData implements IteratorAggregate, Countable
             return null;
         }
 
-        if (! $this->isList($this->_payload)) {
-            return $this->_payload['records'] ?? [];
+        if (! array_is_list($this->payload)) {
+            return $this->payload['records'] ?? [];
         }
 
         return array_map(
             fn($doc) => $doc['records'] ?? null,
-            $this->_payload
+            $this->payload
         );
     }
 
     /**
      * @return int|int[]|null
      */
-    public function getTotalRecords(): ?int
+    public function getTotalRecords()
     {
         if (! $this->hasGrouped()) {
             return null;
         }
 
-        if (! $this->isList($this->_payload)) {
-            return isset($this->_payload['total_records'])
-                ? (int)$this->_payload['total_records']
-                : null;
+        if (! array_is_list($this->payload)) {
+            $val = $this->payload['total_records'] ?? null;
+            return is_numeric($val) ? (int)$val : null;
         }
 
-        return null;
+        return array_map(
+            fn($doc) => (isset($doc['total_records']) && is_numeric($doc['total_records']))
+                ? (int)$doc['total_records']
+                : null,
+            $this->payload
+        );
     }
 
     /**
-     * @return array|array[]
+     * @return array<string, mixed>|array<int, array<string, mixed>>
      */
-    public function getData(): ?array
+    public function getData(): array
     {
-        return $this->_payload;
+        return $this->payload;
     }
 
     public function __toString(): string
