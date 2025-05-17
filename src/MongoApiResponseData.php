@@ -60,6 +60,20 @@ class MongoApiResponseData implements IteratorAggregate, Countable
         return false;
     }
 
+    public function getRecordId()
+    {
+        if (! $this->hasGrouped()) {
+            return null;
+        }
+
+        if (! array_is_list($this->payload)) {
+            return $this->payload['_id'] ?? null;
+        }
+
+        return array_map(
+            fn($doc) => isset($doc['_id']) ?? null, $this->payload
+        );
+    }
     /**
      * @return MongoApiResponsePagination|MongoApiResponsePagination[]|null
      */
