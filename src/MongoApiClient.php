@@ -287,6 +287,18 @@ class MongoApiClient
         return $resp;
     }
 
+    public function count(): MongoApiResponse
+    {
+        $raw = $this->sendRequestWithRetry(
+            'GET',
+            $this->buildPath('count'),
+            $this->assembleParams()
+        );
+        $resp = $this->wrapResponse($raw, true, true);
+        $this->resetQuery();
+        return $resp;
+    }
+
     public function first(): MongoApiResponse
     {
         $this->page = 1;

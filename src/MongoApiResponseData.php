@@ -120,30 +120,48 @@ class MongoApiResponseData implements IteratorAggregate, Countable
     /**
      * @return int|int[]|null
      */
-    public function getTotalRecords()
+    public function getTotalRecords(): array
     {
         if (! $this->hasGrouped()) {
-            return null;
+            return [];
         }
 
         if (! array_is_list($this->payload)) {
             $val = $this->payload['total_records'] ?? null;
-            return is_numeric($val) ? (int)$val : null;
+            return is_numeric($val) ? [(int)$val] : [];
         }
 
-        return array_map(
-            fn($doc) => (isset($doc['total_records']) && is_numeric($doc['total_records']))
-                ? (int)$doc['total_records']
-                : null,
-            $this->payload
-        );
+        return array_values(array_filter(
+            array_map(
+                fn($doc) => (isset($doc['total_records']) && is_numeric($doc['total_records']))
+                    ? (int)$doc['total_records']
+                    : null,
+                $this->payload
+            ),
+            fn($val) => $val !== null
+        ));
     }
+
 
     /**
      * @return array<string, mixed>|array<int, array<string, mixed>>
      */
     public function getData(): array
     {
+        return $this->payload;
+    }
+
+    public function getResults(): ?MongoApiResponseData
+    {
+        return new MongoApiResponseData($this->payload);
+    }
+
+    public function getResult(): ?array
+    {
+        if (count($this->payload) === 1) {
+            return  $this->payload[0] ?? null;
+        }
+
         return $this->payload;
     }
 
